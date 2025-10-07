@@ -17,13 +17,7 @@
 
 mod parse_cflags;
 
-use std::{
-    env,
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{env, fs, fs::File, io::Write, path::{Path, PathBuf}, process::Command};
 
 pub use versions::SemVer;
 
@@ -740,6 +734,43 @@ impl QtBuild {
         let qmltypes_path = qml_module_dir.join("plugin.qmltypes");
         let plugin_class_name = format!("{qml_uri_underscores}_plugin");
 
+
+        let mut qml_components = vec![];
+        for qml_file in qml_files {
+            let ext = qml_file.as_ref()
+                .extension()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string()
+                .to_lowercase();
+            
+            if ext != "qml" {
+                panic!("QML file must end with .qml: {} extension was: {} ", qml_file.as_ref().to_str().unwrap() , ext);
+            }
+
+            if !qml_file.as_ref().is_file() {
+                panic!("Could not find qml file: {}", qml_file.as_ref().display());
+            }
+
+            let file_name = qml_file.as_ref().file_name().unwrap().to_str().unwrap().to_string();
+
+            fs::copy(qml_file.as_ref(), qml_module_dir.join(file_name.clone()))
+                .expect(&format!("Could not copy qml file: {}", qml_file.as_ref().display()).to_string());
+
+            let qml_component_name = file_name.strip_suffix(".qml").unwrap().to_string();
+            if let Some(chars) = qml_component_name.chars().next() {
+                let mut name = "".to_string();
+                
+                name.push(chars.to_ascii_uppercase());
+                name.push_str(&qml_component_name[1..]);
+                
+                let pair = (name, file_name);
+                qml_components.push(pair);
+            }
+
+        }
+
         // Generate qmldir file
         let qmldir_file_path = qml_module_dir.join("qmldir");
         {
@@ -754,6 +785,11 @@ prefer :/qt/qml/{qml_uri_dirs}/
 "
             )
             .expect("Could not write qmldir file");
+            for (qml_component_name, qml_file_name) in &qml_components {
+                write!( qmldir,
+                        "{qml_component_name} {version_major}.{version_minor} {qml_file_name}\n")
+                    .expect("Could not write qmldir file");
+            }
         }
 
         // Generate .qrc file and run rcc on it
