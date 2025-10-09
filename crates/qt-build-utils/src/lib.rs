@@ -5,6 +5,7 @@
 
 #![deny(missing_docs)]
 
+
 //! This crate provides information about the Qt installation and can invoke Qt's
 //! [moc](https://doc.qt.io/qt-6/moc.html) code generator. This crate does not build
 //! any C++ code on its own. It is intended to be used in [build.rs scripts](https://doc.rust-lang.org/cargo/reference/build-scripts.html)
