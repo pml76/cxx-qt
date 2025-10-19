@@ -5,7 +5,8 @@
 
 use crate::QmlUri;
 
-use std::{env, fs, io};
+use std::ffi::OsStr;
+use std::io;
 use std::path::{Path, PathBuf};
 
 /// QML module definition files builder
@@ -13,12 +14,11 @@ use std::path::{Path, PathBuf};
 /// A qmldir file is a plain-text file that contains the commands
 pub struct QmlDirBuilder {
     class_name: Option<String>,
+    depends: Vec<String>,
     plugin: Option<(bool, String)>,
     type_info: Option<String>,
     uri: QmlUri,
     qml_files: Vec<PathBuf>,
-    version_major: usize,
-    version_minor: usize,
 }
 
 impl QmlDirBuilder {
@@ -27,11 +27,10 @@ impl QmlDirBuilder {
     pub fn new(uri: QmlUri) -> Self {
         Self {
             class_name: None,
+            depends: vec![],
             plugin: None,
             type_info: None,
             qml_files: vec![],
-            version_major: 1,
-            version_minor: 0,
             uri,
         }
     }
@@ -58,51 +57,32 @@ impl QmlDirBuilder {
             writeln!(writer, "typeinfo {file}")?;
         }
 
+        for depend in self.depends {
+            writeln!(writer, "depends {depend}")?;
+        }
+
         // Prefer is always specified for now
         writeln!(writer, "prefer :/qt/qml/{}/", self.uri.as_dirs())?;
 
-        let qml_uri_dirs = self.uri.as_dirs().replace('.', "/");
-        let out_dir = env::var("OUT_DIR").unwrap();
-        let qt_build_utils_dir = PathBuf::from(format!("{out_dir}/qt-build-utils"));
-        std::fs::create_dir_all(&qt_build_utils_dir).expect("Could not create qt_build_utils dir");
-
-        let qml_module_dir = qt_build_utils_dir.join("qml_modules").join(&qml_uri_dirs);
-
         for qml_file in &self.qml_files {
-
-            let version_major = self.version_major;
-            let version_minor = self.version_minor;
-            let ext = qml_file
+            let is_qml_file = qml_file
                 .extension()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string()
-                .to_lowercase();
+                .map(|ext| ext.eq_ignore_ascii_case("qml"))
+                .unwrap_or_default();
 
-            if ext != "qml" {
-                panic!("QML file must end with .qml: {} extension was: {} ", qml_file.to_str().unwrap() , ext);
+            if !is_qml_file {
+                panic!("QML file does not end with .qml: {}", qml_file.display(),);
             }
 
-            if !qml_file.is_file() {
-                panic!("Could not find qml file: {}", qml_file.display());
-            }
+            let path = qml_file.display();
+            let qml_component_name = qml_file
+                .file_stem()
+                .and_then(OsStr::to_str)
+                .expect("Could not get qml file stem");
 
-            let qml_file_name = qml_file
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string();
-
-            fs::copy(&qml_file, qml_module_dir.join(qml_file_name.clone()))
-                .expect(&format!("Could not copy qml file: {}", qml_file.display()).to_string());
-
-            let qml_component_name = qml_file_name.strip_suffix(".qml").unwrap().to_string();
-
-
-            writeln!( writer,
-                    "{qml_component_name} {version_major}.{version_minor} {qml_file_name}")
+            // Qt6 simply uses version 254.0 if no specific version is provided
+            // Until we support versions of individal qml files, we will use 254.0
+            writeln!(writer, "{qml_component_name} 254.0 {path}",)
                 .expect("Could not write qmldir file");
         }
 
@@ -119,6 +99,18 @@ impl QmlDirBuilder {
     // TODO: is required for C++ plugins, is it required when plugin?
     pub fn class_name(mut self, class_name: impl Into<String>) -> Self {
         self.class_name = Some(class_name.into());
+        self
+    }
+
+    /// Declares that this module depends on another
+    pub fn depend(mut self, depend: impl Into<String>) -> Self {
+        self.depends.push(depend.into());
+        self
+    }
+
+    /// Declares that this module depends on another
+    pub fn depends<T: Into<String>>(mut self, depends: impl IntoIterator<Item = T>) -> Self {
+        self.depends.extend(depends.into_iter().map(Into::into));
         self
     }
 
@@ -147,20 +139,11 @@ impl QmlDirBuilder {
     }
 
     /// Declares a list of .qml files that are part of the module.
-    pub fn qml_files(mut self, qml_files: &[impl AsRef<Path>]) -> Self {
-        self.qml_files = qml_files.iter().map(|p| p.as_ref().to_owned()).collect();
-        self
-    }
-
-    /// Declares the version major of the qml-module
-    pub fn version_major(mut self, version_major: usize) -> Self {
-        self.version_major = version_major;
-        self
-    }
-
-    /// Declares the version minor of the qml-module
-    pub fn version_minor(mut self, version_minor: usize) -> Self {
-        self.version_minor = version_minor;
+    pub fn qml_files(mut self, qml_files: impl IntoIterator<Item = impl AsRef<Path>>) -> Self {
+        self.qml_files = qml_files
+            .into_iter()
+            .map(|p| p.as_ref().to_owned())
+            .collect();
         self
     }
 
@@ -177,7 +160,6 @@ impl QmlDirBuilder {
     // object type declaration
     // internal object type declaration
     // javascript resource definition
-    // module dependencies declaration
     // module import declaration
     // designer support declaration
 }
@@ -191,8 +173,10 @@ mod test {
         let mut result = Vec::new();
         QmlDirBuilder::new(QmlUri::new(["com", "kdab"]))
             .class_name("C")
+            .depends(["QtQuick", "com.kdab.a"])
             .plugin("P", true)
             .type_info("T")
+            .qml_files(&["qml/Test.qml"])
             .write(&mut result)
             .unwrap();
         assert_eq!(
@@ -201,7 +185,10 @@ mod test {
 optional plugin P
 classname C
 typeinfo T
+depends QtQuick
+depends com.kdab.a
 prefer :/qt/qml/com/kdab/
+Test 254.0 qml/Test.qml
 "
         );
     }
