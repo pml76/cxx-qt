@@ -7,8 +7,8 @@ import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
 import QtQuick.Window 2.12
 
-import com.kdab.cxx_qt.demo 1.0
-import com.kdab.cxx_qt.demo_cpp 1.0
+import com.kdab.cxx_qt.demo
+import com.kdab.cxx_qt.demo_cpp
 
 Page {
     property int amount: 5

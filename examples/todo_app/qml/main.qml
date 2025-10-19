@@ -8,7 +8,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.11
 import QtQuick.Window 2.12
 
-import com.kdab.todo 1.0
+import com.kdab.todo
 
 ApplicationWindow {
   width: 640
