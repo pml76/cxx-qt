@@ -80,9 +80,17 @@ impl QmlDirBuilder {
                 .and_then(OsStr::to_str)
                 .expect("Could not get qml file stem");
 
+            // Paths starting with "../" cause Qt6 to fail when loading QML components.
+            // This happens when a QML file tries to instantiate a component by referencing
+            // another QML file in the same directory using its filename.
+            let mut stripped_path = path.to_string();
+            while stripped_path.starts_with("../") {
+                stripped_path = stripped_path.strip_prefix("../").unwrap().to_string();
+            }
+
             // Qt6 simply uses version 254.0 if no specific version is provided
             // Until we support versions of individual qml files, we will use 254.0
-            writeln!(writer, "{qml_component_name} 254.0 {path}",)
+            writeln!(writer, "{qml_component_name} 254.0 {stripped_path}",)
                 .expect("Could not write qmldir file");
         }
 
