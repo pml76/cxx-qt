@@ -30,7 +30,7 @@ impl QmlModule {
     pub fn new(uri: impl Into<QmlUri>) -> Self {
         Self {
             uri: uri.into(),
-            version_major: 1,
+            version_major: 254,
             version_minor: 0,
             qml_files: Vec::new(),
             depends: Vec::new(),
