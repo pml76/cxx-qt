@@ -32,7 +32,7 @@ impl QmlModule {
             uri: uri.into(),
 
             // Qt6 simply uses version 254.0 if no specific version is provided
-            // Until we support versions of individal qml files, we will use 254.0
+            // Until we support versions of individual qml files, we will use 254.0
             version_major: 254,
             version_minor: 0,
             qml_files: Vec::new(),

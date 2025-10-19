@@ -81,7 +81,7 @@ impl QmlDirBuilder {
                 .expect("Could not get qml file stem");
 
             // Qt6 simply uses version 254.0 if no specific version is provided
-            // Until we support versions of individal qml files, we will use 254.0
+            // Until we support versions of individual qml files, we will use 254.0
             writeln!(writer, "{qml_component_name} 254.0 {path}",)
                 .expect("Could not write qmldir file");
         }
