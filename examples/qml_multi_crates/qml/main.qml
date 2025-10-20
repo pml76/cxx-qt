@@ -7,9 +7,10 @@ import QtQuick.Controls 2.12
 import QtQuick.Layouts 1.12
 import QtQuick.Window 2.12
 
-import com.kdab.cxx_qt.demo 1.0
-import com.kdab.cxx_qt.demo.sub1 1.0
-import com.kdab.cxx_qt.demo.sub2 1.0
+import com.kdab.cxx_qt.demo
+import com.kdab.cxx_qt.demo.sub1.sub2 as Sub2
+import com.kdab.cxx_qt.demo.sub1 as Sub1
+
 
 ApplicationWindow {
     id: window
@@ -18,7 +19,7 @@ ApplicationWindow {
     title: qsTr("CXX-Qt: Hello World")
     visible: true
 
-    BlueRect {
+    Sub2.MyRect {
         id: blueRect
     }
 
@@ -26,11 +27,11 @@ ApplicationWindow {
         id: main
     }
 
-    Sub1Object {
+    Sub1.Sub1Object {
         id: sub1
     }
 
-    Sub2Object {
+    Sub2.Sub2Object {
         id: sub2
     }
 
